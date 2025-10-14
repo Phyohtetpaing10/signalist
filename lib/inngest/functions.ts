@@ -2,7 +2,7 @@ import { getNews } from "../actions/finnhub.actions";
 import { getAllUsersForNewsEmail } from "../actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "../actions/watchlist.actions";
 import { sendNewsSummaryEmail, sendWelcomeEmail } from "../nodemailer";
-import { formatDateToday } from "../utils";
+import { getFormattedTodayDate } from "../utils";
 import { inngest } from "./client";
 import {
   NEWS_SUMMARY_EMAIL_PROMPT,
@@ -87,14 +87,21 @@ export const sendDailyNewsSummary = inngest.createFunction(
           }
           perUser.push({ user, articles });
         } catch (e) {
-          console.error("daily-news: error preparing user news", user.email, e);
+          console.error(
+            "daily-news: error preparing user news for userId",
+            user.id,
+            e
+          );
           perUser.push({ user, articles: [] });
         }
       }
       return perUser;
     });
 
-    const userNewsSummaries: { user: User; newsContent: string | null }[] = [];
+    const userNewsSummaries: {
+      user: UserForNewsEmail;
+      newsContent: string | null;
+    }[] = [];
 
     for (const { user, articles } of results) {
       try {
@@ -116,7 +123,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
         userNewsSummaries.push({ user, newsContent });
       } catch (error) {
-        console.error("Failed to summarize news for : ", user.email);
+        console.error("Failed to summarize news for userId: ", user.id, error);
         userNewsSummaries.push({ user, newsContent: null });
       }
     }
@@ -128,7 +135,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
           return await sendNewsSummaryEmail({
             email: user.email,
-            date: formatDateToday,
+            date: getFormattedTodayDate(),
             newsContent,
           });
         })
